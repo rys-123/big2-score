@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>♠️ 锄大地记分器</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="./icon-192.png">
+    <link rel="icon" type="image/png" href="./icon-192.png">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <style>
+        :root {
+            --primary: #007bff;
+            --danger: #dc3545;
+            --success: #28a745;
+            --warning: #ffc107;
+            --dark: #343a40;
+            --light: #f8f9fa;
+            --safe-bottom: env(safe-area-inset-bottom, 20px);
+        }
+
+        * { box-sizing: border-box; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0; padding: 0;
+            background-color: #f2f4f7;
+            color: #333;
+            padding-bottom: calc(75px + var(--safe-bottom)); 
+            padding-top: env(safe-area-inset-top, 0px);
+        }
+        
+        /* 顶部导航 */
+        header {
+            background: #fff;
+            padding: 12px 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        h1 { margin: 0; font-size: 1.15rem; font-weight: 800; color: #2c3e50; }
+        .header-btns { display: flex; gap: 12px; }
+        .icon-btn {
+            background: #f1f3f5; border: none; font-size: 1.1rem; 
+            width: 36px; height: 36px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+        }
+
+        /* 警告条 - 游戏结束 */
+        #alert-banner {
+            background-color: #ffe3e3;
+            color: #c92a2a;
+            border-bottom: 1px solid #ffc9c9;
+            text-align: center;
+            padding: 12px;
+            font-size: 0.95rem;
+            font-weight: bold;
+            display: none;
+            line-height: 1.5;
+            animation: fadeIn 0.5s;
+        }
+
+        /* 计分板区域 */
+        .scoreboard {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            padding: 12px;
+            background: #fff;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+        }
+        .player-card {
+            text-align: center;
+            padding: 10px 4px;
+            border-radius: 12px;
+            background: #f8f9fa;
+            border: 2px solid transparent;
+            transition: all 0.3s;
+            position: relative;
+        }
+        .player-card.loser {
+            background-color: #fff0f0;
+            border-color: var(--danger);
+        }
+        .status-icon {
+            display: none; position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+            font-size: 18px; background: #fff; border-radius: 50%; padding: 2px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 2;
+        }
+        .player-card.loser .status-icon { display: block; }
+
+        .player-name-input {
+            width: 100%; border: none; background: transparent;
+            text-align: center; font-weight: 600; font-size: 0.9rem;
+            margin-bottom: 6px; color: #495057; padding: 4px 0;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .player-score {
+            font-size: 1.6rem; font-weight: 800; color: var(--primary);
+            font-family: "DIN Alternate", "Roboto Condensed", sans-serif;
+        }
+        .player-score.danger { color: var(--danger); }
+        
+        /* 操作按钮区 */
+        .action-area { padding: 10px 20px; text-align: center; }
+        .btn-main {
+            width: 100%; max-width: 400px; padding: 16px;
+            font-size: 1.15rem; background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white; border: none; border-radius: 16px; font-weight: bold;
+            box-shadow: 0 4px 12px rgba(0,123,255,0.4); cursor: pointer;
+        }
+        .btn-main:active { transform: scale(0.98); }
+        .btn-main.disabled {
+            background: #adb5bd; pointer-events: none; box-shadow: none; opacity: 0.8;
+        }
+
+        /* 历史记录区 */
+        .history-section {
+            background: #fff; margin: 10px 15px; border-radius: 16px;
+            padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+        .history-title {
+            font-size: 0.95rem; color: #333; margin-bottom: 12px; font-weight: 700;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .history-list {
+            max-height: 30vh; overflow-y: auto; font-size: 0.9rem;
+            -webkit-overflow-scrolling: touch;
+        }
+        .history-row {
+            display: grid; grid-template-columns: 0.8fr repeat(4, 1fr);
+            padding: 10px 0; border-bottom: 1px solid #f1f3f5; text-align: center; align-items: center;
+        }
+        .history-header {
+            font-weight: bold; background: #f8f9fa; border-radius: 8px; color: #666; font-size: 0.8rem; padding: 8px 0;
+        }
+        .round-idx { color: #adb5bd; font-size: 0.75rem; }
+        .score-change { font-weight: 600; color: #333; }
+        .score-winner { font-size: 1.2rem; line-height: 1; } 
+
+        /* 模态框 */
+        .modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); backdrop-filter: blur(2px); z-index: 1000;
+            justify-content: center; align-items: center; padding: 20px;
+        }
+        .modal.active { display: flex; }
+        .modal-content {
+            background: #fff; width: 100%; max-width: 450px; border-radius: 24px;
+            padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            animation: zoomIn 0.2s ease-out; max-height: 85vh; overflow-y: auto;
+        }
+        @keyframes zoomIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        
+        .input-row {
+            display: flex; align-items: center; margin-bottom: 16px; 
+            background: #f8f9fa; padding: 8px; border-radius: 12px;
+        }
+        .input-label { width: 70px; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .input-group { flex: 1; display: flex; align-items: center; gap: 8px; }
+        
+        input[type="number"] {
+            flex: 1; padding: 12px; border: 2px solid transparent; background: #fff;
+            border-radius: 8px; font-size: 18px; font-weight: bold; text-align: center;
+        }
+        input[type="number"]:focus { border-color: var(--primary); outline: none; }
+        
+        .twos-selector { display: flex; gap: 6px; align-items: center; margin-left: 5px;}
+        .twos-label { font-size: 0.8rem; color: #888; font-weight: bold; }
+        .twos-btn {
+            width: 34px; height: 34px; border-radius: 50%; 
+            border: 1px solid #dee2e6; background: #fff;
+            display: flex; justify-content: center; align-items: center; 
+            font-size: 0.9rem; font-weight: bold; color: #495057; cursor: pointer;
+        }
+        .twos-btn.selected { 
+            background: var(--danger); color: white; border-color: var(--danger); 
+            box-shadow: 0 2px 6px rgba(220,53,69,0.4);
+        }
+        .hidden { display: none !important; }
+
+        .modal-actions { display: flex; gap: 12px; margin-top: 24px; }
+        .btn-cancel, .btn-confirm {
+            padding: 14px; border: none; border-radius: 12px; font-weight: bold; font-size: 1rem; flex: 1;
+        }
+        .btn-cancel { background: #f1f3f5; color: #495057; }
+        .btn-confirm { background: var(--success); color: white; flex: 1.5; }
+
+        /* 底部工具栏 */
+        .footer-tools {
+            position: fixed; bottom: 0; left: 0; width: 100%;
+            background: rgba(255,255,255,0.95); backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(0,0,0,0.05); padding: 8px 0;
+            padding-bottom: env(safe-area-inset-bottom, 10px); 
+            display: flex; justify-content: space-around; z-index: 900;
+        }
+        .btn-tool {
+            background: none; border: none; color: #6c757d; font-size: 0.7rem;
+            display: flex; flex-direction: column; align-items: center; gap: 4px; width: 50%;
+        }
+        .btn-tool svg { width: 24px; height: 24px; fill: currentColor; opacity: 0.8; }
+
+        /* 设置与帮助 */
+        .rule-block { background: #f8f9fa; padding: 12px; border-radius: 10px; margin-bottom: 12px; font-size: 0.9rem; line-height: 1.6; color: #555; }
+        .rule-block strong { color: var(--primary); display:block; margin-bottom:4px;}
+        .switch-row { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px dashed #eee; }
+        
+        .switch { position: relative; display: inline-block; width: 50px; height: 30px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #e9ecef; transition: .3s; border-radius: 30px; }
+        .slider:before { position: absolute; content: ""; height: 26px; width: 26px; left: 2px; bottom: 2px; background-color: white; transition: .3s; border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        input:checked + .slider { background-color: var(--success); }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+        /* 关于信息区域 */
+        .about-footer {
+            margin-top: 20px; padding-top: 20px; border-top: 1px dashed #ddd; text-align: center;
+        }
+        .about-qr {
+            width: 120px; height: 120px; margin: 10px auto; border-radius: 8px; border: 1px solid #eee; padding: 5px; background: #fff;
+            display: block;
+        }
+
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>♠️ 锄大地记分器</h1>
+    <div class="header-btns">
+        <button class="icon-btn" id="btn-help" title="规则说明">❓</button>
+        <button class="icon-btn" id="btn-settings" title="设置">⚙️</button>
+    </div>
+</header>
+
+<div id="alert-banner"></div>
+
+<!-- 计分板 -->
+<div class="scoreboard" id="scoreboard">
+    <!-- 动态生成 -->
+</div>
+
+<!-- 操作区 -->
+<div class="action-area">
+    <button class="btn-main" id="btn-record">📝 记一局</button>
+</div>
+
+<!-- 历史记录 -->
+<div class="history-section">
+    <div class="history-title">
+        <span>📋 单局明细</span>
+        <small id="round-count" style="color:#999; font-weight:normal">共 0 局</small>
+    </div>
+    <div class="history-list" id="history-list">
+        <!-- 动态生成 -->
+    </div>
+</div>
+
+<!-- 底部工具栏 -->
+<div class="footer-tools">
+    <button class="btn-tool" id="btn-restart">
+        <svg viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
+        <span>新的一盘</span>
+    </button>
+    <button class="btn-tool" id="btn-reset-all" style="color: var(--danger);">
+        <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+        <span>重置数据</span>
+    </button>
+</div>
+
+<!-- 记分弹窗 (Modal) -->
+<div class="modal" id="score-modal">
+    <div class="modal-content">
+        <h3 style="margin-top:0; text-align:center;">输入剩余牌数</h3>
+        <div id="modal-inputs">
+            <!-- 动态生成 -->
+        </div>
+        <div class="modal-actions">
+            <button class="btn-cancel" id="modal-cancel">取消</button>
+            <button class="btn-confirm" id="modal-confirm">确认计算</button>
+        </div>
+    </div>
+</div>
+
+<!-- 设置弹窗 -->
+<div class="modal" id="settings-modal">
+    <div class="modal-content">
+        <h3>设置</h3>
+        <div class="switch-row">
+            <div>
+                <div style="font-weight:bold; font-size:1rem;">启用"2"的加罚规则</div>
+                <div style="font-size:0.85rem; color:#888; margin-top:4px;">
+                    当有人出完牌时，其余玩家手里的2需额外罚分。
+                </div>
+            </div>
+            <label class="switch">
+                <input type="checkbox" id="rule5-toggle" checked>
+                <span class="slider"></span>
+            </label>
+        </div>
+        <div style="margin-top:20px;">
+            <button class="btn-confirm" onclick="document.getElementById('settings-modal').classList.remove('active')" style="width:100%">完成</button>
+        </div>
+    </div>
+</div>
+
+<!-- 帮助弹窗 -->
+<div class="modal" id="help-modal">
+    <div class="modal-content">
+        <h3>规则与说明</h3>
+        <div class="rule-block">
+            <strong>1. 基础计分 (罚分制)</strong>
+            • 剩余 < 8 张 : 1倍 (n分)<br>
+            • 8 ≤ 剩余 < 10 : 2倍 (2n分)<br>
+            • 10 ≤ 剩余 < 13 : 3倍 (3n分)<br>
+            • 剩余 13 张 : 4倍 (52分)
+        </div>
+        <div class="rule-block">
+            <strong>2. 特殊规则 ("2"的加罚)</strong>
+            若开启，当一家出完牌时，其余玩家手里每有一张2，罚分在原基础上 <strong>+10分</strong>。<br>
+            <em style="color:#888; display:block; margin-top:5px; font-size:0.85rem">注：会自动校验总数及合法性。</em>
+        </div>
+        <div class="rule-block">
+            <strong>3. 输赢判定</strong>
+            • 0分为当局优胜(👑)。<br>
+            • 任意玩家总分 <strong>≥100</strong> 时，本盘结束。<br>
+            • 所有分数破百的玩家均为输家(💸)。
+        </div>
+        <div class="rule-block">
+            <strong>4. 操作指南</strong>
+            • <strong>修改名字</strong>：点击首页玩家名称即可修改。<br>
+            • <strong>记分</strong>：点击“记一局”，输入剩余张数。若有2，点击下方数字选择。<br>
+            • <strong>安装APP</strong>：iPhone请在Safari点击分享->添加到主屏幕；安卓请在Chrome菜单点击安装应用。<br>
+            • <strong>数据保存</strong>：刷新页面数据不丢失；点击“新的一盘”开始下一轮较量。
+        </div>
+        
+        <!-- 增加制作人与二维码 -->
+        <div class="about-footer">
+            <div style="font-weight:bold; color:#333; margin-bottom:5px;">制作人：RYS</div>
+            <img id="page-qr" src="" alt="Scan QR" class="about-qr">
+            <div style="font-size:0.75rem; color:#999;">扫码安装到手机</div>
+        </div>
+
+        <div style="margin-top:20px;">
+            <button class="btn-confirm" onclick="document.getElementById('help-modal').classList.remove('active')" style="width:100%">关闭</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- 状态管理 ---
+    const STORAGE_KEY = 'big2_score_data_v6'; 
+    
+    const defaultState = {
+        players: [
+            { id: 0, name: "玩家A", score: 0 },
+            { id: 1, name: "玩家B", score: 0 },
+            { id: 2, name: "玩家C", score: 0 },
+            { id: 3, name: "玩家D", score: 0 }
+        ],
+        history: [], 
+        settings: {
+            enableTwos: true
+        }
+    };
+
+    let appState = loadState();
+
+    function loadState() {
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (!parsed.history) parsed.history = [];
+                return parsed;
+            }
+        } catch(e) { console.error("Load failed", e); }
+        return JSON.parse(JSON.stringify(defaultState));
+    }
+
+    function saveState() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+        render();
+    }
+
+    function calculatePenalty(cards, twoCount) {
+        if (cards === 0) return 0;
+        
+        let score = cards; 
+        if (cards >= 8 && cards < 10) score = cards * 2;
+        else if (cards >= 10 && cards < 13) score = cards * 3;
+        else if (cards === 13) score = cards * 4; 
+
+        if (appState.settings.enableTwos && twoCount > 0) {
+            score += (twoCount * 10);
+        }
+        return score;
+    }
+
+    // --- 渲染逻辑 ---
+
+    const ui = {
+        scoreboard: document.getElementById('scoreboard'),
+        alertBanner: document.getElementById('alert-banner'),
+        btnRecord: document.getElementById('btn-record'),
+        modal: document.getElementById('score-modal'),
+        modalInputs: document.getElementById('modal-inputs'),
+        rule5Toggle: document.getElementById('rule5-toggle'),
+        historyList: document.getElementById('history-list'),
+        roundCount: document.getElementById('round-count')
+    };
+
+    function render() {
+        ui.scoreboard.innerHTML = '';
+        
+        const losers = appState.players.filter(p => p.score >= 100);
+        const isGameOver = losers.length > 0;
+        
+        if (isGameOver) {
+            const loserNames = losers.map(p => p.name).join('、');
+            ui.alertBanner.innerHTML = `🚨 <strong>计分结束！</strong><br>本盘有玩家分数爆了，请发红包：<br><span style="font-size:1.1rem;color:#c92a2a">${loserNames}</span>`;
+            ui.alertBanner.style.display = 'block';
+            
+            ui.btnRecord.classList.add('disabled');
+            ui.btnRecord.innerHTML = '🚫 本盘结束 (请开启新的一盘)';
+        } else {
+            ui.alertBanner.style.display = 'none';
+            ui.btnRecord.classList.remove('disabled');
+            ui.btnRecord.innerHTML = '📝 记一局';
+        }
+
+        appState.players.forEach((player, index) => {
+            const isLoser = player.score >= 100;
+            const div = document.createElement('div');
+            div.className = `player-card ${isLoser ? 'loser' : ''}`;
+            
+            div.innerHTML = `
+                <div class="status-icon">💸</div>
+                <input type="text" class="player-name-input" data-idx="${index}" value="${player.name}" onfocus="this.select()" placeholder="点击输入">
+                <div class="player-score ${isLoser ? 'danger' : ''}">${player.score}</div>
+            `;
+            ui.scoreboard.appendChild(div);
+        });
+
+        document.querySelectorAll('.player-name-input').forEach(input => {
+            input.addEventListener('change', (e) => {
+                const idx = parseInt(e.target.dataset.idx);
+                appState.players[idx].name = e.target.value || `玩家${String.fromCharCode(65+idx)}`;
+                saveState();
+            });
+        });
+
+        renderHistory();
+        ui.rule5Toggle.checked = appState.settings.enableTwos;
+    }
+
+    function renderHistory() {
+        const history = appState.history;
+        ui.roundCount.textContent = `共 ${history.length} 局`;
+        
+        if (history.length === 0) {
+            ui.historyList.innerHTML = '<div style="text-align:center;padding:20px;color:#ccc;">暂无记录，快开始第一局吧~</div>';
+            return;
+        }
+
+        let html = `
+            <div class="history-row history-header">
+                <div class="round-idx">#</div>
+                ${appState.players.map(p => `<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.name.substring(0,4)}</div>`).join('')}
+            </div>
+        `;
+
+        [...history].reverse().forEach((record, revIdx) => {
+            const realIdx = history.length - revIdx;
+            let rowHtml = `<div class="history-row">
+                <div class="round-idx">${realIdx}</div>`;
+            
+            record.scores.forEach(s => {
+                if (s.points === 0) {
+                    rowHtml += `<div class="score-change score-winner">👑</div>`;
+                } else {
+                    let detail = '';
+                    if(s.twos > 0) detail = `<sub style="font-size:0.6em;color:var(--danger)">+${s.twos}张2</sub>`;
+                    rowHtml += `<div class="score-change">+${s.points}${detail}</div>`;
+                }
+            });
+            
+            rowHtml += `</div>`;
+            html += rowHtml;
+        });
+
+        ui.historyList.innerHTML = html;
+    }
+
+    // --- 交互与校验 ---
+
+    function openModal() {
+        if (ui.btnRecord.classList.contains('disabled')) return;
+
+        ui.modalInputs.innerHTML = '';
+        appState.players.forEach((player, index) => {
+            const row = document.createElement('div');
+            row.className = 'input-row';
+            
+            let twosHtml = '';
+            if (appState.settings.enableTwos) {
+                twosHtml = `
+                    <div class="twos-selector hidden" id="twos-group-${index}">
+                        <span class="twos-label">2:</span>
+                        ${[1,2,3,4].map(n => `<div class="twos-btn" onclick="selectTwos(${index}, ${n}, this)">${n}</div>`).join('')}
+                        <input type="hidden" id="twos-val-${index}" value="0">
+                    </div>
+                `;
+            }
+
+            row.innerHTML = `
+                <div class="input-label">${player.name}</div>
+                <div class="input-group">
+                    <input type="number" id="card-input-${index}" placeholder="0" inputmode="numeric" oninput="handleCardInput(${index}, this)">
+                    ${twosHtml}
+                </div>
+            `;
+            ui.modalInputs.appendChild(row);
+        });
+        ui.modal.classList.add('active');
+    }
+
+    function closeModal() {
+        ui.modal.classList.remove('active');
+    }
+
+    window.handleCardInput = function(index, input) {
+        let val = parseInt(input.value);
+        if (isNaN(val)) val = 0;
+        if (val > 13) { input.value = 13; val = 13; }
+        if (val < 0) { input.value = ''; val = 0; }
+
+        if (appState.settings.enableTwos) {
+            const twosGroup = document.getElementById(`twos-group-${index}`);
+            if (val > 0) {
+                twosGroup.classList.remove('hidden');
+            } else {
+                twosGroup.classList.add('hidden');
+                document.getElementById(`twos-val-${index}`).value = 0;
+                twosGroup.querySelectorAll('.twos-btn').forEach(b => b.classList.remove('selected'));
+            }
+        }
+    };
+
+    window.selectTwos = function(index, count, btnElement) {
+        const parent = document.getElementById(`twos-group-${index}`);
+        const hiddenInput = document.getElementById(`twos-val-${index}`);
+        if (btnElement.classList.contains('selected')) {
+            btnElement.classList.remove('selected');
+            hiddenInput.value = 0;
+        } else {
+            parent.querySelectorAll('.twos-btn').forEach(b => b.classList.remove('selected'));
+            btnElement.classList.add('selected');
+            hiddenInput.value = count;
+        }
+    };
+
+    function submitScore() {
+        const inputs = [];
+        let zeroCount = 0;
+        let totalTwos = 0;
+
+        for (let i = 0; i < 4; i++) {
+            const cardInput = document.getElementById(`card-input-${i}`);
+            let cards = cardInput.value === '' ? 0 : parseInt(cardInput.value);
+            
+            if (cards === 0) zeroCount++;
+            
+            let twos = 0;
+            if (appState.settings.enableTwos) {
+                twos = parseInt(document.getElementById(`twos-val-${i}`)?.value || 0);
+            }
+            
+            // 校验逻辑 3：单人手里2的数量不能大于剩余牌数
+            if (twos > cards) {
+                alert(`⚠️ 校验失败：\n${appState.players[i].name} 只有 ${cards} 张牌，不可能有 ${twos} 张 2！`);
+                return;
+            }
+
+            totalTwos += twos;
+            inputs.push({ idx: i, cards, twos });
+        }
+
+        // 校验逻辑 1：必须有一家出完牌
+        if (zeroCount !== 1) {
+            alert("⚠️ 校验失败：\n每局必须有一名（且仅有一名）玩家出完牌（0张）。");
+            return;
+        }
+
+        // 校验逻辑 2：一副牌只有4张2
+        if (appState.settings.enableTwos && totalTwos > 4) {
+             alert(`⚠️ 校验失败：\n所有玩家手里的"2"总数不能超过4张！(当前选择了${totalTwos}张)`);
+             return;
+        }
+
+        const roundRecord = {
+            timestamp: Date.now(),
+            scores: []
+        };
+
+        inputs.forEach(data => {
+            const points = calculatePenalty(data.cards, data.twos);
+            appState.players[data.idx].score += points;
+            roundRecord.scores.push({
+                playerId: data.idx,
+                cards: data.cards,
+                twos: data.twos,
+                points: points
+            });
+        });
+
+        appState.history.push(roundRecord);
+        saveState();
+        closeModal();
+    }
+
+    // --- 事件绑定 ---
+    ui.btnRecord.addEventListener('click', openModal);
+    document.getElementById('modal-cancel').addEventListener('click', closeModal);
+    document.getElementById('modal-confirm').addEventListener('click', submitScore);
+
+    // 帮助弹窗打开时，动态生成当前URL的二维码
+    document.getElementById('btn-help').addEventListener('click', () => {
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(window.location.href)}`;
+        document.getElementById('page-qr').src = qrUrl;
+        document.getElementById('help-modal').classList.add('active');
+    });
+
+    document.getElementById('btn-settings').addEventListener('click', () => document.getElementById('settings-modal').classList.add('active'));
+
+    ui.rule5Toggle.addEventListener('change', (e) => {
+        appState.settings.enableTwos = e.target.checked;
+        saveState();
+    });
+
+    document.getElementById('btn-restart').addEventListener('click', () => {
+        if(confirm('确定开启新的一盘吗？\n当前分数将清零，但名字保留。')) {
+            appState.players.forEach(p => p.score = 0);
+            appState.history = [];
+            saveState();
+        }
+    });
+
+    document.getElementById('btn-reset-all').addEventListener('click', () => {
+        if(confirm('⚠️ 警告：这将清除所有数据（包括名字）并恢复出厂设置！')) {
+            localStorage.removeItem(STORAGE_KEY);
+            location.reload();
+        }
+    });
+
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js').catch(() => {});
+        });
+    }
+
+    render();
+</script>
+</body>
+</html>

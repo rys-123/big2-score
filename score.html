@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <!-- 让页面适配手机屏幕，禁止缩放，像原生App -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- iOS Safari 全屏设置 -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>私人记牌器</title>
+    <style>
+        :root { --primary: #007AFF; --bg: #f2f2f7; --card: #ffffff; --text: #000; --danger: #ff3b30; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: var(--bg); margin: 0; padding: 0; padding-bottom: 80px; color: var(--text); -webkit-tap-highlight-color: transparent; }
+        
+        /* 顶部导航 */
+        .header { background: var(--card); padding: 15px; text-align: center; font-weight: bold; font-size: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 10; display: flex; justify-content: space-between; align-items: center; }
+        .reset-btn { color: var(--danger); font-size: 14px; background: none; border: none; cursor: pointer; }
+        
+        /* 玩家列表区域 */
+        .player-grid { display: flex; overflow-x: auto; padding: 10px; background: var(--card); margin-bottom: 10px; border-bottom: 1px solid #ddd; }
+        .player-col { min-width: 80px; flex: 1; text-align: center; border-right: 1px solid #eee; padding: 5px; }
+        .player-name { font-weight: bold; font-size: 16px; margin-bottom: 5px; color: #333; }
+        .total-score { font-size: 24px; font-weight: 800; color: var(--primary); margin-bottom: 5px; }
+        .del-player { font-size: 10px; color: #999; border: 1px solid #eee; padding: 2px 5px; border-radius: 4px; background: none; }
+        
+        /* 记分历史列表 */
+        .history-list { padding: 10px; }
+        .round-item { background: var(--card); padding: 10px; border-radius: 10px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .round-num { font-size: 12px; color: #888; width: 40px; }
+        .round-scores { flex: 1; display: flex; font-size: 14px; color: #555; overflow-x: auto; }
+        .round-score-item { flex: 1; text-align: center; }
+        .del-round { color: var(--danger); font-size: 20px; border: none; background: none; padding: 0 10px; }
+
+        /* 底部操作栏 */
+        .footer { position: fixed; bottom: 0; left: 0; right: 0; background: var(--card); padding: 10px; border-top: 1px solid #ddd; display: flex; gap: 10px; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); }
+        button.action-btn { flex: 1; height: 44px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; color: white; background-color: var(--primary); cursor: pointer; active: opacity: 0.8; }
+        button.secondary { background-color: #e5e5ea; color: #000; }
+        
+        /* 弹窗 */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; }
+        .modal-content { background: white; width: 85%; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .modal h3 { margin-top: 0; }
+        .input-group { margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between; }
+        .input-group label { width: 40%; font-weight: bold; }
+        .input-group input { width: 50%; padding: 8px; font-size: 18px; border: 1px solid #ddd; border-radius: 6px; text-align: center; }
+        .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <span>♠️ 私人记牌器</span>
+    <button class="reset-btn" onclick="confirmReset()">重置/清空</button>
+</div>
+
+<!-- 显示总分 -->
+<div class="player-grid" id="playerHeader">
+    <!-- 动态生成 -->
+</div>
+
+<!-- 历史记录 -->
+<div class="history-list" id="historyList">
+    <!-- 动态生成 -->
+</div>
+
+<!-- 底部按钮 -->
+<div class="footer">
+    <button class="action-btn secondary" onclick="openAddPlayer()">+ 玩家</button>
+    <button class="action-btn" onclick="openRecordScore()">记一局</button>
+</div>
+
+<!-- 添加玩家弹窗 -->
+<div id="playerModal" class="modal">
+    <div class="modal-content">
+        <h3>添加新玩家</h3>
+        <input type="text" id="newPlayerName" placeholder="输入名字" style="width: 90%; padding: 10px; font-size: 16px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 6px;">
+        <div class="modal-actions">
+            <button class="action-btn secondary" onclick="closeModal('playerModal')">取消</button>
+            <button class="action-btn" onclick="addPlayer()">确定</button>
+        </div>
+    </div>
+</div>
+
+<!-- 记分弹窗 -->
+<div id="scoreModal" class="modal">
+    <div class="modal-content">
+        <h3>录入本局分数</h3>
+        <div id="scoreInputs">
+            <!-- 动态生成输入框 -->
+        </div>
+        <div class="modal-actions">
+            <button class="action-btn secondary" onclick="closeModal('scoreModal')">取消</button>
+            <button class="action-btn" onclick="saveRound()">保存</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 核心数据结构
+    let data = {
+        players: [], // ['小王', '小李']
+        rounds: []   // [{scores: [10, -10]}, {scores: [5, -5]}]
+    };
+
+    // 初始化：从手机存储读取数据
+    function init() {
+        const savedData = localStorage.getItem('cardGameData_v1');
+        if (savedData) {
+            data = JSON.parse(savedData);
+        }
+        render();
+    }
+
+    // 保存数据到手机存储 (核心持久化逻辑)
+    function saveData() {
+        localStorage.setItem('cardGameData_v1', JSON.stringify(data));
+        render();
+    }
+
+    // 渲染界面
+    function render() {
+        const header = document.getElementById('playerHeader');
+        const history = document.getElementById('historyList');
+        
+        // 1. 计算总分
+        let totals = new Array(data.players.length).fill(0);
+        data.rounds.forEach(round => {
+            round.scores.forEach((score, index) => {
+                totals[index] += parseInt(score) || 0;
+            });
+        });
+
+        // 2. 渲染头部玩家和总分
+        header.innerHTML = '';
+        data.players.forEach((p, i) => {
+            header.innerHTML += `
+                <div class="player-col">
+                    <div class="player-name">${p}</div>
+                    <div class="total-score" style="color: ${totals[i] >= 0 ? '#007AFF' : '#ff3b30'}">${totals[i]}</div>
+                    <button class="del-player" onclick="removePlayer(${i})">删除</button>
+                </div>
+            `;
+        });
+
+        // 3. 渲染历史记录
+        history.innerHTML = '';
+        data.rounds.slice().reverse().forEach((round, rIndex) => {
+            let scoreHtml = '';
+            round.scores.forEach(s => {
+                scoreHtml += `<div class="round-score-item" style="color:${s<0?'#ff3b30':'#555'}">${s}</div>`;
+            });
+            // 真实的索引需要倒序计算
+            let realIndex = data.rounds.length - 1 - rIndex;
+            history.innerHTML += `
+                <div class="round-item">
+                    <div class="round-num">#${realIndex + 1}</div>
+                    <div class="round-scores">${scoreHtml}</div>
+                    <button class="del-round" onclick="removeRound(${realIndex})">×</button>
+                </div>
+            `;
+        });
+    }
+
+    // 逻辑功能函数
+    function openAddPlayer() {
+        document.getElementById('playerModal').style.display = 'flex';
+        document.getElementById('newPlayerName').focus();
+    }
+
+    function addPlayer() {
+        const name = document.getElementById('newPlayerName').value.trim();
+        if (name) {
+            data.players.push(name);
+            // 之前的局数，这个新玩家默认得0分，或者你需要处理补齐逻辑，这里简单处理：
+            // 如果已有对局，新加的玩家历史记录补0
+            data.rounds.forEach(r => r.scores.push(0));
+            
+            document.getElementById('newPlayerName').value = '';
+            closeModal('playerModal');
+            saveData();
+        }
+    }
+
+    function removePlayer(index) {
+        if(confirm('确定删除该玩家及其所有分数吗？')) {
+            data.players.splice(index, 1);
+            data.rounds.forEach(r => r.scores.splice(index, 1));
+            saveData();
+        }
+    }
+
+    function openRecordScore() {
+        if (data.players.length === 0) return alert('先添加玩家！');
+        
+        const container = document.getElementById('scoreInputs');
+        container.innerHTML = '';
+        data.players.forEach((p, i) => {
+            container.innerHTML += `
+                <div class="input-group">
+                    <label>${p}</label>
+                    <input type="number" step="1" class="score-input" placeholder="0">
+                </div>
+            `;
+        });
+        document.getElementById('scoreModal').style.display = 'flex';
+        // 自动聚焦第一个输入框
+        setTimeout(() => document.querySelector('.score-input').focus(), 100);
+    }
+
+    function saveRound() {
+        const inputs = document.querySelectorAll('.score-input');
+        let currentScores = [];
+        let allEmpty = true;
+        inputs.forEach(input => {
+            let val = input.value === '' ? 0 : parseInt(input.value);
+            currentScores.push(val);
+            if(input.value !== '') allEmpty = false;
+        });
+
+        if (!allEmpty) {
+            data.rounds.push({ scores: currentScores });
+            closeModal('scoreModal');
+            saveData();
+        }
+    }
+
+    function removeRound(index) {
+        if(confirm('删除这一局记录？')) {
+            data.rounds.splice(index, 1);
+            saveData();
+        }
+    }
+
+    function confirmReset() {
+        if(confirm('确定要清空所有数据吗？此操作无法撤销。')) {
+            data.players = [];
+            data.rounds = [];
+            saveData();
+        }
+    }
+
+    function closeModal(id) {
+        document.getElementById(id).style.display = 'none';
+    }
+
+    // 启动
+    init();
+</script>
+</body>
+</html>
