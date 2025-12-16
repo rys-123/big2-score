@@ -1,6 +1,6 @@
 {
-  "name": "♠️ 锄大地记分器",
-  "short_name": "锄大地",
+  "name": "♠️ 锄大地计分器",
+  "short_name": "锄大地计分器",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f0f2f5",
@@ -17,4 +17,5 @@
       "type": "image/png"
     }
   ]
+
 }
