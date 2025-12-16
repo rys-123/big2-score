@@ -17,7 +17,7 @@
 
 ## 🚀 如何使用 (在线链接)
 
-**[👉 点击这里直接开始使用](https://rys-123.github.io/big2-score-pwa/)**
+**[👉 点击这里直接开始使用](https://rys-123.github.io/big2-score/)**
 
 ### 📲 安装到手机 (推荐)
 
