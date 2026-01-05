@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>♠️ 锄大地记分器</title>
+    <title>♠️ 锄大地计分器</title>
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="./icon-192.png">
     <link rel="icon" type="image/png" href="./icon-192.png">
@@ -106,6 +106,16 @@
         .player-score {
             font-size: 1.6rem; font-weight: 800; color: var(--primary);
             font-family: "DIN Alternate", "Roboto Condensed", sans-serif;
+            cursor: default; /* 默认不可点击 */
+            position: relative;
+        }
+        /* 当允许编辑时显示为手型 */
+        .player-score.editable {
+            cursor: pointer;
+            text-decoration: underline;
+            text-decoration-style: dotted;
+            text-decoration-color: #ccc;
+            text-underline-offset: 4px;
         }
         .player-score.danger { color: var(--danger); }
         
@@ -213,12 +223,15 @@
         .rule-block strong { color: var(--primary); display:block; margin-bottom:4px;}
         .switch-row { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px dashed #eee; }
         
-        .switch { position: relative; display: inline-block; width: 50px; height: 30px; }
+        .switch { position: relative; display: inline-block; width: 50px; height: 30px; flex-shrink: 0; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #e9ecef; transition: .3s; border-radius: 30px; }
         .slider:before { position: absolute; content: ""; height: 26px; width: 26px; left: 2px; bottom: 2px; background-color: white; transition: .3s; border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
         input:checked + .slider { background-color: var(--success); }
         input:checked + .slider:before { transform: translateX(20px); }
+
+        .setting-input-wrapper { display:flex; align-items:center; gap:5px; }
+        .setting-input { width:80px; padding:6px; text-align:center; border:1px solid #ddd; border-radius:6px; font-size:16px; font-weight:bold; }
 
         /* 关于信息区域 */
         .about-footer {
@@ -294,6 +307,22 @@
 <div class="modal" id="settings-modal">
     <div class="modal-content">
         <h3>设置</h3>
+        
+        <!-- 设置项1: 结束分数线 -->
+        <div class="switch-row">
+            <div>
+                <div style="font-weight:bold; font-size:1rem;">本盘结束分数线</div>
+                <div style="font-size:0.85rem; color:#888; margin-top:4px;">
+                    任意玩家达到此分数时游戏结束。
+                </div>
+            </div>
+            <div class="setting-input-wrapper">
+                <input type="number" id="max-score-input" class="setting-input" value="100">
+                <span style="font-size:0.8rem; font-weight:bold; color:#666">分</span>
+            </div>
+        </div>
+
+        <!-- 设置项2: 2的加罚 -->
         <div class="switch-row">
             <div>
                 <div style="font-weight:bold; font-size:1rem;">启用"2"的加罚规则</div>
@@ -302,10 +331,25 @@
                 </div>
             </div>
             <label class="switch">
-                <input type="checkbox" id="rule5-toggle" checked>
+                <input type="checkbox" id="rule5-toggle">
                 <span class="slider"></span>
             </label>
         </div>
+
+        <!-- 设置项3: 手动修改分数 -->
+        <div class="switch-row">
+            <div>
+                <div style="font-weight:bold; font-size:1rem;">允许手动修改分数</div>
+                <div style="font-size:0.85rem; color:#888; margin-top:4px;">
+                    开启后，点击首页玩家分数可直接修正数值。
+                </div>
+            </div>
+            <label class="switch">
+                <input type="checkbox" id="edit-score-toggle">
+                <span class="slider"></span>
+            </label>
+        </div>
+
         <div style="margin-top:20px;">
             <button class="btn-confirm" onclick="document.getElementById('settings-modal').classList.remove('active')" style="width:100%">完成</button>
         </div>
@@ -325,21 +369,20 @@
         </div>
         <div class="rule-block">
             <strong>2. 特殊规则 ("2"的加罚)</strong>
-            若开启，当一家出完牌时，其余玩家手里每有一张2，罚分在原基础上 <strong>+10分</strong>
-            <em style="color:#888; display:block; margin-top:5px; font-size:0.85rem">注：会自动校验总数及合法性。</em>
+            若开启（默认为关闭），当一家出完牌时，其余玩家手里每有一张2，罚分在原基础上 <strong>+10分</strong>。
         </div>
         <div class="rule-block">
             <strong>3. 输赢判定</strong>
             • 0分为当局优胜(👑)。<br>
-            • 任意玩家总分 <strong>≥100</strong> 时，本盘结束。<br>
-            • 所有分数破百的玩家均为输家(💸)。
+            • 任意玩家总分 <strong>≥设定分数线 (默认100)</strong> 时，本盘结束。<br>
+            • 所有分数超过该线的玩家均为输家(💸)。
         </div>
         <div class="rule-block">
             <strong>4. 操作指南</strong>
             • <strong>修改名字</strong>：点击首页玩家名称即可修改。<br>
-            • <strong>记分</strong>：点击“记一局”，输入剩余张数。若有2，点击下方数字选择。<br>
+            • <strong>修改分数</strong>：在设置中开启“允许手动修改分数”后，点击首页玩家分数可进行修正（仅限正整数）。<br>
+            • <strong>记分</strong>：点击“记一局”，输入剩余张数。若有2且开启了加罚，点击下方数字选择。<br>
             • <strong>安装APP</strong>：iPhone请在Safari点击分享->添加到主屏幕；安卓请在Chrome菜单点击安装应用。<br>
-            • <strong>数据保存</strong>：刷新页面数据不丢失；点击“新的一盘”开始下一轮较量。
         </div>
         
         <!-- 增加制作人与二维码 -->
@@ -357,7 +400,8 @@
 
 <script>
     // --- 状态管理 ---
-    const STORAGE_KEY = 'big2_score_data_v6'; 
+    // 升级KEY版本以确保新默认值生效 (或在loadState中做合并)
+    const STORAGE_KEY = 'big2_score_data_v7'; 
     
     const defaultState = {
         players: [
@@ -368,7 +412,9 @@
         ],
         history: [], 
         settings: {
-            enableTwos: true
+            enableTwos: false, // 修改：默认关闭
+            maxScore: 100,     // 新增：默认100分
+            allowScoreEdit: false // 新增：默认关闭
         }
     };
 
@@ -379,7 +425,11 @@
             const saved = localStorage.getItem(STORAGE_KEY);
             if (saved) {
                 const parsed = JSON.parse(saved);
+                // 简单的合并逻辑，防止旧版本缺少新字段
                 if (!parsed.history) parsed.history = [];
+                if (!parsed.settings) parsed.settings = {};
+                // 将默认设置与保存的设置合并，确保新字段存在
+                parsed.settings = { ...defaultState.settings, ...parsed.settings };
                 return parsed;
             }
         } catch(e) { console.error("Load failed", e); }
@@ -414,6 +464,8 @@
         modal: document.getElementById('score-modal'),
         modalInputs: document.getElementById('modal-inputs'),
         rule5Toggle: document.getElementById('rule5-toggle'),
+        editScoreToggle: document.getElementById('edit-score-toggle'), // 新增
+        maxScoreInput: document.getElementById('max-score-input'), // 新增
         historyList: document.getElementById('history-list'),
         roundCount: document.getElementById('round-count')
     };
@@ -421,12 +473,14 @@
     function render() {
         ui.scoreboard.innerHTML = '';
         
-        const losers = appState.players.filter(p => p.score >= 100);
+        // 使用动态设置的分数线，默认为100
+        const limit = appState.settings.maxScore || 100;
+        const losers = appState.players.filter(p => p.score >= limit);
         const isGameOver = losers.length > 0;
         
         if (isGameOver) {
             const loserNames = losers.map(p => p.name).join('、');
-            ui.alertBanner.innerHTML = `🚨 <strong>计分结束！</strong><br>本盘有玩家分数爆了，请发红包：<br><span style="font-size:1.1rem;color:#c92a2a">${loserNames}</span>`;
+            ui.alertBanner.innerHTML = `🚨 <strong>计分结束！</strong><br>本盘有玩家分数达到 ${limit} 分了：<br><span style="font-size:1.1rem;color:#c92a2a">${loserNames}</span>`;
             ui.alertBanner.style.display = 'block';
             
             ui.btnRecord.classList.add('disabled');
@@ -438,15 +492,26 @@
         }
 
         appState.players.forEach((player, index) => {
-            const isLoser = player.score >= 100;
+            const isLoser = player.score >= limit;
             const div = document.createElement('div');
             div.className = `player-card ${isLoser ? 'loser' : ''}`;
+            
+            // 检查是否允许手动改分
+            const editableClass = appState.settings.allowScoreEdit ? 'editable' : '';
+            const titleAttr = appState.settings.allowScoreEdit ? 'title="点击修改分数"' : '';
             
             div.innerHTML = `
                 <div class="status-icon">💸</div>
                 <input type="text" class="player-name-input" data-idx="${index}" value="${player.name}" onfocus="this.select()" placeholder="点击输入">
-                <div class="player-score ${isLoser ? 'danger' : ''}">${player.score}</div>
+                <div class="player-score ${isLoser ? 'danger' : ''} ${editableClass}" ${titleAttr}>${player.score}</div>
             `;
+            
+            // 绑定点击修改事件
+            if (appState.settings.allowScoreEdit) {
+                const scoreDiv = div.querySelector('.player-score');
+                scoreDiv.addEventListener('click', () => handleScoreEdit(index));
+            }
+
             ui.scoreboard.appendChild(div);
         });
 
@@ -459,7 +524,11 @@
         });
 
         renderHistory();
+        
+        // 同步设置面板状态
         ui.rule5Toggle.checked = appState.settings.enableTwos;
+        ui.editScoreToggle.checked = appState.settings.allowScoreEdit;
+        ui.maxScoreInput.value = appState.settings.maxScore;
     }
 
     function renderHistory() {
@@ -501,6 +570,26 @@
     }
 
     // --- 交互与校验 ---
+    
+    // 手动修改分数逻辑
+    function handleScoreEdit(index) {
+        if (!appState.settings.allowScoreEdit) return;
+        
+        const currentPlayer = appState.players[index];
+        const input = prompt(`修改 ${currentPlayer.name} 的分数\n请输入新的分数（只能是0或正整数）:`, currentPlayer.score);
+        
+        if (input !== null) {
+            // 验证是否为非负整数
+            if (/^\d+$/.test(input)) {
+                const newScore = parseInt(input, 10);
+                currentPlayer.score = newScore;
+                saveState();
+                // 记录一条修改日志（可选，目前暂不记录到history以免混乱，直接改当前分）
+            } else {
+                alert("❌ 输入无效！请输入合法的正整数（包括0）。");
+            }
+        }
+    }
 
     function openModal() {
         if (ui.btnRecord.classList.contains('disabled')) return;
@@ -511,6 +600,10 @@
             row.className = 'input-row';
             
             let twosHtml = '';
+            // 即使关闭了enableTwos，生成逻辑还在，只是不显示，
+            // 但为了安全起见，如果不启用，这里也不生成HTML结构，或者保持隐藏
+            // 根据逻辑calculatePenalty，如果不启用，twoCount传什么都没用。
+            // 这里为了UI一致性，如果enableTwos为false，直接不渲染selector
             if (appState.settings.enableTwos) {
                 twosHtml = `
                     <div class="twos-selector hidden" id="twos-group-${index}">
@@ -519,6 +612,9 @@
                         <input type="hidden" id="twos-val-${index}" value="0">
                     </div>
                 `;
+            } else {
+                // 占位隐藏input防止报错
+                twosHtml = `<input type="hidden" id="twos-val-${index}" value="0">`;
             }
 
             row.innerHTML = `
@@ -545,12 +641,14 @@
 
         if (appState.settings.enableTwos) {
             const twosGroup = document.getElementById(`twos-group-${index}`);
-            if (val > 0) {
-                twosGroup.classList.remove('hidden');
-            } else {
-                twosGroup.classList.add('hidden');
-                document.getElementById(`twos-val-${index}`).value = 0;
-                twosGroup.querySelectorAll('.twos-btn').forEach(b => b.classList.remove('selected'));
+            if (twosGroup && !twosGroup.classList.contains('hidden-by-setting')) { // 增加安全性判断
+                if (val > 0) {
+                    twosGroup.classList.remove('hidden');
+                } else {
+                    twosGroup.classList.add('hidden');
+                    document.getElementById(`twos-val-${index}`).value = 0;
+                    twosGroup.querySelectorAll('.twos-btn').forEach(b => b.classList.remove('selected'));
+                }
             }
         }
     };
@@ -580,6 +678,7 @@
             if (cards === 0) zeroCount++;
             
             let twos = 0;
+            // 只有开启了设置才获取2的数量
             if (appState.settings.enableTwos) {
                 twos = parseInt(document.getElementById(`twos-val-${i}`)?.value || 0);
             }
@@ -641,8 +740,27 @@
 
     document.getElementById('btn-settings').addEventListener('click', () => document.getElementById('settings-modal').classList.add('active'));
 
+    // 设置：2的加罚开关
     ui.rule5Toggle.addEventListener('change', (e) => {
         appState.settings.enableTwos = e.target.checked;
+        saveState();
+    });
+    
+    // 设置：允许修改分数开关
+    ui.editScoreToggle.addEventListener('change', (e) => {
+        appState.settings.allowScoreEdit = e.target.checked;
+        saveState();
+    });
+
+    // 设置：最大分数输入
+    ui.maxScoreInput.addEventListener('change', (e) => {
+        const val = parseInt(e.target.value);
+        if (isNaN(val) || val <= 0) {
+            alert("❌ 分数线必须为正整数！");
+            e.target.value = appState.settings.maxScore; // 恢复旧值
+            return;
+        }
+        appState.settings.maxScore = val;
         saveState();
     });
 
@@ -670,5 +788,4 @@
     render();
 </script>
 </body>
-
 </html>
